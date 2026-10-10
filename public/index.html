@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nihongo Notes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  html,body{height:100%}
+  body{background:linear-gradient(160deg,#f0f9ff 0%,#e0f2fe 45%,#eff6ff 100%) fixed;font-family:'Segoe UI','Yu Gothic UI','Meiryo',system-ui,sans-serif;color:#1e3a5f}
+  @keyframes enterUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes enterRight{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}
+  @keyframes toastIn{from{opacity:0;transform:translateX(120%)}to{opacity:1;transform:none}}
+  @keyframes toastOut{to{opacity:0;transform:translateX(120%)}}
+  @keyframes pop{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:none}}
+  .enter-up{animation:enterUp .35s cubic-bezier(.2,.8,.2,1)}
+  .enter-right{animation:enterRight .38s cubic-bezier(.2,.8,.2,1)}
+  .pop{animation:pop .28s cubic-bezier(.2,.8,.2,1)}
+  .toast-in{animation:toastIn .35s cubic-bezier(.2,.8,.2,1) forwards}
+  .toast-out{animation:toastOut .3s ease forwards}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  .glass{background:rgba(255,255,255,.78);backdrop-filter:blur(10px);border:1px solid rgba(186,230,253,.8)}
+  .scroll-soft::-webkit-scrollbar{width:8px}.scroll-soft::-webkit-scrollbar-thumb{background:#bae6fd;border-radius:8px}
+  /* Quill: gaya ala Word */
+  .ql-toolbar.ql-snow{border-color:#bae6fd;border-radius:14px 14px 0 0;background:#f0f9ff;position:sticky;top:0;z-index:5}
+  .ql-container.ql-snow{border-color:#bae6fd;border-radius:0 0 14px 14px;background:#fff;font-size:16px}
+  #editor .ql-editor{min-height:280px;max-height:55vh;overflow-y:auto}
+  .ql-editor p,.ql-editor ol,.ql-editor ul,.ql-editor blockquote,.ql-editor pre{margin:0 0 .65em;line-height:1.5}
+  .rich .ql-editor{padding:0;height:auto;overflow:visible;font-size:16px}
+  .rich .ql-editor p{margin:0 0 .65em}
+  .rich{border:0!important}
+  .rich a{color:#0284c7;text-decoration:underline}
+</style>
+</head>
+<body class="text-slate-700">
+
+<!-- LOCK SCREEN -->
+<div id="lock" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gradient-to-br from-sky-100 via-white to-blue-100">
+  <div class="pop glass w-full max-w-sm rounded-3xl p-8 shadow-xl shadow-sky-200/60 text-center">
+    <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-300 to-blue-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-sky-200"><i class="fa-solid fa-book-open"></i></div>
+    <div class="mt-5 text-2xl font-bold text-sky-900">Nihongo Notes</div>
+    <div class="mt-1 text-sm text-slate-500">Masukkan PIN untuk membuka catatanmu</div>
+    <div class="relative mt-6">
+      <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-sky-300"></i>
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" class="w-full pl-11 pr-4 py-3 rounded-xl border border-sky-200 bg-white text-center tracking-[.4em] text-lg focus:outline-none focus:ring-2 focus:ring-sky-300">
+    </div>
+    <div id="pinErr" class="hidden mt-3 text-sm text-rose-500"></div>
+    <div id="pinBtn" role="button" tabindex="0" class="mt-5 cursor-pointer select-none px-4 py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-sky-400 to-blue-500 shadow-md shadow-sky-200 hover:from-sky-500 hover:to-blue-600 active:scale-95 transition">Buka</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="overlay" class="fixed inset-0 z-30 bg-sky-950/30 hidden lg:hidden"></div>
+<div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full lg:translate-x-0 transition-transform duration-300 glass border-r border-sky-100 flex flex-col">
+  <div class="px-5 py-5 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-300 to-blue-500 text-white flex items-center justify-center"><i class="fa-solid fa-book-open"></i></div>
+    <div class="font-bold text-sky-900 text-lg leading-tight">Nihongo<br>Notes</div>
+  </div>
+  <div class="px-3 flex-1 space-y-1 text-sm font-medium">
+    <a href="#/notes" data-nav="notes" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-sky-50 transition"><i class="fa-solid fa-pen-to-square w-5 text-sky-500"></i>Catatan</a>
+    <a href="#/links" data-nav="links" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-sky-50 transition"><i class="fa-solid fa-link w-5 text-sky-500"></i>Link Resources</a>
+    <a href="/list-notes" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-sky-50 transition"><i class="fa-solid fa-book-open-reader w-5 text-sky-500"></i>Mode Baca</a>
+  </div>
+  <div class="p-3">
+    <div id="logoutBtn" role="button" class="cursor-pointer flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition"><i class="fa-solid fa-right-from-bracket w-5"></i>Kunci</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="lg:pl-64 min-h-full flex flex-col">
+  <div class="sticky top-0 z-20 glass border-x-0 border-t-0 px-4 sm:px-6 py-3 flex items-center gap-3" style="padding-top:max(.75rem,env(safe-area-inset-top))">
+    <div id="menuBtn" role="button" aria-label="Menu" class="lg:hidden cursor-pointer w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center active:scale-95 transition"><i class="fa-solid fa-bars"></i></div>
+    <div id="pageTitle" class="font-bold text-sky-900 text-lg truncate">Catatan</div>
+    <div class="ml-auto text-xs sm:text-sm text-sky-600 flex items-center gap-2"><i class="fa-regular fa-calendar"></i><span id="today"></span></div>
+  </div>
+  <div id="view" class="flex-1 p-4 sm:p-6" style="padding-bottom:max(1.5rem,env(safe-area-inset-bottom))"></div>
+</div>
+
+<!-- MODAL FORM CATATAN -->
+<div id="noteModal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-sky-950/30 sm:p-4">
+  <div class="pop bg-white w-full sm:max-w-3xl max-h-[94vh] overflow-y-auto scroll-soft rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-7">
+    <div class="flex items-center justify-between mb-5">
+      <div id="noteModalTitle" class="text-lg font-bold text-sky-900">Catatan Baru</div>
+      <div data-close="noteModal" role="button" class="cursor-pointer w-9 h-9 rounded-lg hover:bg-sky-50 flex items-center justify-center text-slate-400"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <input type="hidden" id="noteId">
+    <label class="block text-sm font-medium text-sky-900 mb-1">Pola kalimat yang dipelajari hari ini</label>
+    <input id="notePattern" maxlength="255" placeholder="contoh: 〜たいです" class="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-300">
+    <label class="block text-sm font-medium text-sky-900 mt-4 mb-1">Tanggal</label>
+    <input id="noteDate" type="date" class="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-300">
+    <div id="noteDateLabel" class="text-xs text-sky-500 mt-1"></div>
+    <label class="block text-sm font-medium text-sky-900 mt-4 mb-1">Deskripsi</label>
+    <div id="editor"></div>
+    <div class="text-xs text-slate-400 mt-2">Enter = paragraf baru, Shift+Enter = baris baru (seperti Word).</div>
+    <div class="flex justify-end gap-2 mt-6">
+      <div data-close="noteModal" role="button" class="cursor-pointer px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">Batal</div>
+      <div id="saveNote" role="button" class="cursor-pointer px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-sky-400 to-blue-500 shadow-md shadow-sky-200 hover:from-sky-500 hover:to-blue-600 active:scale-95 transition"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan catatan</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORM LINK -->
+<div id="linkModal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-sky-950/30 sm:p-4">
+  <div class="pop bg-white w-full sm:max-w-lg max-h-[94vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-7">
+    <div class="flex items-center justify-between mb-5">
+      <div id="linkModalTitle" class="text-lg font-bold text-sky-900">Link Baru</div>
+      <div data-close="linkModal" role="button" class="cursor-pointer w-9 h-9 rounded-lg hover:bg-sky-50 flex items-center justify-center text-slate-400"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <input type="hidden" id="linkId">
+    <label class="block text-sm font-medium text-sky-900 mb-1">Nama link</label>
+    <input id="linkName" maxlength="255" placeholder="contoh: Tae Kim Grammar Guide" class="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-300">
+    <label class="block text-sm font-medium text-sky-900 mt-4 mb-1">Tanggal</label>
+    <input id="linkDate" type="date" class="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-300">
+    <div id="linkDateLabel" class="text-xs text-sky-500 mt-1"></div>
+    <label class="block text-sm font-medium text-sky-900 mt-4 mb-1">Link</label>
+    <input id="linkUrl" type="url" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-300">
+    <div class="flex justify-end gap-2 mt-6">
+      <div data-close="linkModal" role="button" class="cursor-pointer px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">Batal</div>
+      <div id="saveLink" role="button" class="cursor-pointer px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-sky-400 to-blue-500 shadow-md shadow-sky-200 hover:from-sky-500 hover:to-blue-600 active:scale-95 transition"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan link</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KONFIRMASI HAPUS -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-sky-950/40 p-4">
+  <div class="pop bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center">
+    <div class="mx-auto w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-xl"><i class="fa-solid fa-trash-can"></i></div>
+    <div class="mt-4 text-lg font-bold text-sky-900">Hapus data ini?</div>
+    <div id="confirmText" class="mt-1 text-sm text-slate-500"></div>
+    <div class="flex gap-2 mt-6">
+      <div id="confirmNo" role="button" class="cursor-pointer flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">Batal</div>
+      <div id="confirmYes" role="button" class="cursor-pointer flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-500 hover:bg-rose-600 active:scale-95 transition">Hapus</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST (kanan atas) -->
+<div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-xs pointer-events-none" style="top:max(1rem,env(safe-area-inset-top))"></div>
+
+<script>
+/* ============ HELPER ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TZ = 'Asia/Makassar';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayISO = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+const fmtDate = (s) => s ? new Intl.DateTimeFormat('id-ID', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(s + 'T00:00:00+08:00')) : '';
+const plain = (html) => new DOMParser().parseFromString(html || '', 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+DOMPurify.addHook('afterSanitizeAttributes', n => { if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); } });
+const clean = (h) => DOMPurify.sanitize(h || '');
+const host = (u) => { try { return new URL(u).hostname; } catch { return u; } };
+
+const state = { notes: [], links: [], q: '' };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    method: opts.method || 'GET',
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (res.status === 401 && !path.startsWith('/api/auth/login')) { showLock(); throw new Error('Sesi berakhir, masukkan PIN lagi.'); }
+  if (!res.ok) throw new Error((data && data.message) || 'Terjadi kesalahan.');
+  return data;
+}
+
+/* ============ TOAST ============ */
+function toast(msg, type = 'success') {
+  const map = { success: ['fa-circle-check', 'text-emerald-500', 'border-emerald-100'], error: ['fa-circle-exclamation', 'text-rose-500', 'border-rose-100'] };
+  const [icon, color, border] = map[type] || map.success;
+  const el = document.createElement('div');
+  el.className = `toast-in pointer-events-auto flex items-center gap-3 bg-white border ${border} rounded-2xl shadow-lg shadow-sky-100 px-4 py-3 text-sm`;
+  el.innerHTML = `<i class="fa-solid ${icon} ${color} text-lg"></i><div class="flex-1 text-slate-700">${esc(msg)}</div>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.classList.replace('toast-in', 'toast-out'); setTimeout(() => el.remove(), 320); }, 3200);
+}
+
+/* ============ MODAL ============ */
+const openModal = (id) => { const m = $('#' + id); m.classList.remove('hidden'); const p = m.firstElementChild; p.classList.remove('pop'); void p.offsetWidth; p.classList.add('pop'); };
+const closeModal = (id) => $('#' + id).classList.add('hidden');
+$$('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+['noteModal', 'linkModal'].forEach(id => $('#' + id).addEventListener('mousedown', e => { if (e.target.id === id) closeModal(id); }));
+
+let confirmResolve = null;
+function confirmDelete(text) {
+  $('#confirmText').textContent = text;
+  openModal('confirmModal');
+  return new Promise(r => { confirmResolve = r; });
+}
+$('#confirmYes').addEventListener('click', () => { closeModal('confirmModal'); confirmResolve && confirmResolve(true); });
+$('#confirmNo').addEventListener('click', () => { closeModal('confirmModal'); confirmResolve && confirmResolve(false); });
+
+/* ============ QUILL (toolbar lengkap ala Word) ============ */
+const FONTS = { 'arial': ['Arial', 'Arial,Helvetica,sans-serif'], 'calibri': ['Calibri', 'Calibri,Carlito,sans-serif'], 'times-new-roman': ['Times New Roman', '"Times New Roman",Times,serif'], 'georgia': ['Georgia', 'Georgia,serif'], 'verdana': ['Verdana', 'Verdana,sans-serif'], 'courier-new': ['Courier New', '"Courier New",monospace'], 'yu-gothic': ['Yu Gothic (日本語)', '"Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif'] };
+const SIZES = ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '48px'];
+const Font = Quill.import('formats/font'); Font.whitelist = Object.keys(FONTS); Quill.register(Font, true);
+const Size = Quill.import('attributors/style/size'); Size.whitelist = SIZES; Quill.register(Size, true);
+(() => {
+  let css = '';
+  for (const [k, [label, fam]] of Object.entries(FONTS)) {
+    css += `.ql-font-${k}{font-family:${fam}}`;
+    css += `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${k}"]::before,.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${k}"]::before{content:'${label}';font-family:${fam}}`;
+  }
+  for (const s of SIZES) css += `.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="${s}"]::before,.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="${s}"]::before{content:'${parseInt(s)}'}`;
+  css += `.ql-snow .ql-picker.ql-font{width:140px}.ql-snow .ql-picker.ql-size{width:60px}`;
+  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+})();
+const quill = new Quill('#editor', {
+  theme: 'snow',
+  placeholder: 'Tulis penjelasan, contoh kalimat, arti, catatan tambahan...',
+  modules: { toolbar: [
+    [{ font: Object.keys(FONTS) }, { size: SIZES }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ color: [] }, { background: [] }],
+    [{ script: 'sub' }, { script: 'super' }],
+    [{ header: [1, 2, 3, false] }],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    [{ indent: '-1' }, { indent: '+1' }],
+    [{ align: [] }],
+    ['blockquote', 'code-block', 'link'],
+    ['clean'],
+  ] },
+});
+
+/* ============ DATA ============ */
+async function loadAll() {
+  const [n, l] = await Promise.all([api('/api/notes'), api('/api/links')]);
+  state.notes = n; state.links = l;
+}
+
+/* ============ AUTH UI ============ */
+function showLock() { $('#lock').classList.remove('hidden'); $('#pin').value = ''; setTimeout(() => $('#pin').focus(), 50); }
+async function login() {
+  const err = $('#pinErr'); err.classList.add('hidden');
+  try {
+    await api('/api/auth/login', { method: 'POST', body: { pin: $('#pin').value } });
+    $('#lock').classList.add('hidden');
+    await start();
+  } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
+}
+$('#pinBtn').addEventListener('click', login);
+$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('#logoutBtn').addEventListener('click', async () => { await api('/api/auth/logout', { method: 'POST' }).catch(() => {}); $('#view').innerHTML = ''; showLock(); });
+
+/* ============ SIDEBAR ============ */
+const sb = $('#sidebar'), ov = $('#overlay');
+const toggleSb = (open) => { sb.classList.toggle('-translate-x-full', !open); ov.classList.toggle('hidden', !open); };
+$('#menuBtn').addEventListener('click', () => toggleSb(sb.classList.contains('-translate-x-full')));
+ov.addEventListener('click', () => toggleSb(false));
+$$('[data-nav]').forEach(a => a.addEventListener('click', () => toggleSb(false)));
+
+/* ============ VIEWS ============ */
+const view = $('#view');
+const btnPrimary = 'cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-sky-400 to-blue-500 shadow-md shadow-sky-200 hover:from-sky-500 hover:to-blue-600 active:scale-95 transition';
+const iconBtn = 'cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center transition active:scale-90';
+
+function setNav(name, title) {
+  $$('[data-nav]').forEach(a => { const on = a.dataset.nav === name; a.classList.toggle('bg-sky-100', on); a.classList.toggle('text-sky-800', on); });
+  $('#pageTitle').textContent = title;
+}
+
+function renderNotes() {
+  setNav('notes', 'Catatan');
+  const q = state.q.toLowerCase();
+  const list = state.notes.filter(n => !q || n.pattern.toLowerCase().includes(q) || plain(n.description).toLowerCase().includes(q));
+  view.innerHTML = `<div class="enter-up max-w-5xl mx-auto">
+    <div class="flex flex-col sm:flex-row gap-3 sm:items-center mb-5">
+      <div class="relative flex-1"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-sky-300"></i>
+        <input id="search" value="${esc(state.q)}" placeholder="Cari pola atau isi catatan" class="w-full pl-11 pr-4 py-3 rounded-xl border border-sky-100 bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-300"></div>
+      <div id="addNote" role="button" class="${btnPrimary} justify-center"><i class="fa-solid fa-plus"></i>Catatan baru</div>
+    </div>
+    ${list.length ? `<div class="grid gap-4 sm:grid-cols-2">${list.map(n => `
+      <div data-open="${n.id}" role="button" class="glass cursor-pointer rounded-2xl p-5 shadow-sm hover:shadow-lg hover:shadow-sky-100 hover:-translate-y-0.5 active:scale-[.99] transition">
+        <div class="flex items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sky-900 text-lg truncate">${esc(n.pattern)}</div>
+            <div class="text-xs text-sky-500 mt-1"><i class="fa-regular fa-calendar mr-1"></i>${fmtDate(n.note_date)}</div>
+          </div>
+          <div class="flex gap-1">
+            <div data-edit="${n.id}" role="button" aria-label="Edit" class="${iconBtn} text-sky-500 hover:bg-sky-50"><i class="fa-solid fa-pen"></i></div>
+            <div data-del="${n.id}" role="button" aria-label="Hapus" class="${iconBtn} text-rose-400 hover:bg-rose-50"><i class="fa-solid fa-trash"></i></div>
+          </div>
+        </div>
+        <div class="mt-3 text-sm text-slate-500 line-clamp-3">${esc(plain(n.description).slice(0, 180)) || '<i>(kosong)</i>'}</div>
+      </div>`).join('')}</div>`
+    : `<div class="glass rounded-2xl p-10 text-center text-slate-500"><i class="fa-regular fa-note-sticky text-3xl text-sky-300"></i><div class="mt-3">${state.q ? 'Tidak ada catatan yang cocok.' : 'Belum ada catatan. Tambahkan pola kalimat pertamamu.'}</div></div>`}
+  </div>`;
+  $('#search').addEventListener('input', e => { state.q = e.target.value; const pos = e.target.selectionStart; renderNotes(); const s = $('#search'); s.focus(); s.setSelectionRange(pos, pos); });
+  $('#addNote').addEventListener('click', () => openNoteForm());
+}
+
+function renderNoteDetail(id) {
+  const n = state.notes.find(x => String(x.id) === String(id));
+  if (!n) { location.hash = '#/notes'; return; }
+  setNav('notes', 'Detail catatan');
+  view.innerHTML = `<div class="enter-right max-w-3xl mx-auto">
+    <div class="flex items-center gap-2 mb-4">
+      <a href="#/notes" class="${iconBtn} bg-white text-sky-600 shadow-sm w-10 h-10"><i class="fa-solid fa-arrow-left"></i></a>
+      <div class="ml-auto flex gap-2">
+        <div data-edit="${n.id}" role="button" class="${iconBtn} w-auto px-4 gap-2 text-sm font-medium bg-white text-sky-600 shadow-sm"><i class="fa-solid fa-pen"></i>Edit</div>
+        <div data-del="${n.id}" role="button" class="${iconBtn} w-auto px-4 gap-2 text-sm font-medium bg-white text-rose-500 shadow-sm"><i class="fa-solid fa-trash"></i>Hapus</div>
+      </div>
+    </div>
+    <div class="glass rounded-3xl p-5 sm:p-9 shadow-sm">
+      <div class="text-2xl sm:text-3xl font-bold text-sky-900 break-words">${esc(n.pattern)}</div>
+      <div class="text-sm text-sky-500 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${fmtDate(n.note_date)}</div>
+      <div class="h-px bg-gradient-to-r from-sky-200 to-transparent my-5"></div>
+      <div class="ql-snow rich"><div class="ql-editor break-words">${clean(n.description)}</div></div>
+    </div>
+  </div>`;
+  window.scrollTo({ top: 0 });
+}
+
+function renderLinks() {
+  setNav('links', 'Link Resources');
+  view.innerHTML = `<div class="enter-up max-w-3xl mx-auto">
+    <div class="flex justify-end mb-5"><div id="addLink" role="button" class="${btnPrimary}"><i class="fa-solid fa-plus"></i>Link baru</div></div>
+    ${state.links.length ? `<div class="space-y-3">${state.links.map(l => `
+      <div class="glass rounded-2xl p-4 sm:p-5 flex items-center gap-3 shadow-sm">
+        <div class="w-11 h-11 shrink-0 rounded-xl bg-gradient-to-br from-sky-100 to-blue-100 text-sky-500 flex items-center justify-center"><i class="fa-solid fa-link"></i></div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sky-900 truncate">${esc(l.name)}</div>
+          <div class="text-xs text-slate-400 truncate">${esc(host(l.url))}</div>
+          <div class="text-xs text-sky-500 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${fmtDate(l.link_date)}</div>
+        </div>
+        <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="Buka link" class="${iconBtn} bg-sky-50 text-sky-600 hover:bg-sky-100"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        <div data-ledit="${l.id}" role="button" aria-label="Edit" class="${iconBtn} text-sky-500 hover:bg-sky-50"><i class="fa-solid fa-pen"></i></div>
+        <div data-ldel="${l.id}" role="button" aria-label="Hapus" class="${iconBtn} text-rose-400 hover:bg-rose-50"><i class="fa-solid fa-trash"></i></div>
+      </div>`).join('')}</div>`
+    : `<div class="glass rounded-2xl p-10 text-center text-slate-500"><i class="fa-solid fa-link text-3xl text-sky-300"></i><div class="mt-3">Belum ada link. Simpan sumber belajar favoritmu.</div></div>`}
+  </div>`;
+  $('#addLink').addEventListener('click', () => openLinkForm());
+}
+
+function route() {
+  const [name, id] = (location.hash.replace(/^#\/?/, '') || 'notes').split('/');
+  if (name === 'links') renderLinks();
+  else if (name === 'notes' && id) renderNoteDetail(id);
+  else renderNotes();
+}
+window.addEventListener('hashchange', route);
+
+/* ============ FORM NOTES ============ */
+function openNoteForm(id) {
+  const n = id ? state.notes.find(x => String(x.id) === String(id)) : null;
+  $('#noteModalTitle').textContent = n ? 'Edit Catatan' : 'Catatan Baru';
+  $('#noteId').value = n ? n.id : '';
+  $('#notePattern').value = n ? n.pattern : '';
+  $('#noteDate').value = n ? n.note_date : todayISO();
+  quill.setContents([]);
+  if (n) quill.clipboard.dangerouslyPasteHTML(0, clean(n.description));
+  updDateLabel('note');
+  openModal('noteModal');
+  setTimeout(() => $('#notePattern').focus(), 60);
+}
+const updDateLabel = (p) => { $(`#${p}DateLabel`).textContent = fmtDate($(`#${p}Date`).value); };
+$('#noteDate').addEventListener('change', () => updDateLabel('note'));
+$('#linkDate').addEventListener('change', () => updDateLabel('link'));
+
+$('#saveNote').addEventListener('click', async () => {
+  const id = $('#noteId').value;
+  const empty = quill.getText().trim() === '' && !quill.root.querySelector('img');
+  const body = { pattern: $('#notePattern').value.trim(), note_date: $('#noteDate').value, description: empty ? '' : quill.root.innerHTML };
+  if (!body.pattern) return toast('Pola kalimat wajib diisi.', 'error');
+  if (!body.note_date) return toast('Tanggal wajib diisi.', 'error');
+  if (empty) return toast('Deskripsi wajib diisi.', 'error');
+  try {
+    await api(id ? `/api/notes/${id}` : '/api/notes', { method: id ? 'PUT' : 'POST', body });
+    await loadAll(); closeModal('noteModal'); route();
+    toast(id ? 'Catatan berhasil diperbarui.' : 'Catatan berhasil ditambahkan.');
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+/* ============ FORM LINKS ============ */
+function openLinkForm(id) {
+  const l = id ? state.links.find(x => String(x.id) === String(id)) : null;
+  $('#linkModalTitle').textContent = l ? 'Edit Link' : 'Link Baru';
+  $('#linkId').value = l ? l.id : '';
+  $('#linkName').value = l ? l.name : '';
+  $('#linkDate').value = l ? l.link_date : todayISO();
+  $('#linkUrl').value = l ? l.url : '';
+  updDateLabel('link');
+  openModal('linkModal');
+  setTimeout(() => $('#linkName').focus(), 60);
+}
+$('#saveLink').addEventListener('click', async () => {
+  const id = $('#linkId').value;
+  const body = { name: $('#linkName').value.trim(), link_date: $('#linkDate').value, url: $('#linkUrl').value.trim() };
+  if (!body.name) return toast('Nama link wajib diisi.', 'error');
+  if (!/^https?:\/\//i.test(body.url)) return toast('Link harus diawali http:// atau https://', 'error');
+  try {
+    await api(id ? `/api/links/${id}` : '/api/links', { method: id ? 'PUT' : 'POST', body });
+    await loadAll(); closeModal('linkModal'); route();
+    toast(id ? 'Link berhasil diperbarui.' : 'Link berhasil ditambahkan.');
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+/* ============ EVENT DELEGATION (klik card/edit/hapus) ============ */
+async function doDelete(kind, id) {
+  const label = kind === 'notes' ? 'catatan' : 'link';
+  if (!(await confirmDelete(`Data ${label} yang dihapus tidak bisa dikembalikan.`))) return;
+  try {
+    await api(`/api/${kind}/${id}`, { method: 'DELETE' });
+    await loadAll();
+    if (kind === 'notes' && /#\/notes\/\d+/.test(location.hash)) location.hash = '#/notes'; else route();
+    toast(`Berhasil menghapus ${label}.`);
+  } catch (e) { toast(e.message, 'error'); }
+}
+view.addEventListener('click', e => {
+  const t = e.target;
+  let el;
+  if ((el = t.closest('[data-edit]'))) return openNoteForm(el.dataset.edit);
+  if ((el = t.closest('[data-del]'))) return doDelete('notes', el.dataset.del);
+  if ((el = t.closest('[data-ledit]'))) return openLinkForm(el.dataset.ledit);
+  if ((el = t.closest('[data-ldel]'))) return doDelete('links', el.dataset.ldel);
+  if ((el = t.closest('[data-open]'))) location.hash = '#/notes/' + el.dataset.open;
+});
+
+/* ============ START ============ */
+async function start() {
+  try { await loadAll(); route(); }
+  catch (e) { if (!/Sesi/.test(e.message)) toast(e.message, 'error'); }
+}
+function tick() { $('#today').textContent = new Intl.DateTimeFormat('id-ID', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()) + ' WITA'; }
+tick(); setInterval(tick, 30000);
+(async () => {
+  try { await api('/api/auth/me'); $('#lock').classList.add('hidden'); await start(); }
+  catch { showLock(); }
+})();
+</script>
+</body>
+</html>

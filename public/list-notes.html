@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mode Baca - Nihongo Notes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  html,body{height:100%}
+  body{background:linear-gradient(160deg,#f0f9ff 0%,#e0f2fe 45%,#eff6ff 100%) fixed;font-family:'Segoe UI','Yu Gothic UI','Meiryo',system-ui,sans-serif;color:#1e3a5f}
+  @keyframes enterUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes enterRight{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}
+  @keyframes toastIn{from{opacity:0;transform:translateX(120%)}to{opacity:1;transform:none}}
+  @keyframes toastOut{to{opacity:0;transform:translateX(120%)}}
+  @keyframes pop{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:none}}
+  .enter-up{animation:enterUp .35s cubic-bezier(.2,.8,.2,1)}
+  .enter-right{animation:enterRight .38s cubic-bezier(.2,.8,.2,1)}
+  .pop{animation:pop .28s cubic-bezier(.2,.8,.2,1)}
+  .toast-in{animation:toastIn .35s cubic-bezier(.2,.8,.2,1) forwards}
+  .toast-out{animation:toastOut .3s ease forwards}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  .glass{background:rgba(255,255,255,.78);backdrop-filter:blur(10px);border:1px solid rgba(186,230,253,.8)}
+  .scroll-soft::-webkit-scrollbar{width:8px}.scroll-soft::-webkit-scrollbar-thumb{background:#bae6fd;border-radius:8px}
+  .ql-editor p,.ql-editor ol,.ql-editor ul,.ql-editor blockquote,.ql-editor pre{margin:0 0 .65em;line-height:1.5}
+  .rich{border:0!important}
+  .rich .ql-editor{padding:0;height:auto;overflow:visible;font-size:16px}
+  .rich a{color:#0284c7;text-decoration:underline}
+  /* font Word yang dipakai di editor */
+  .ql-font-arial{font-family:Arial,Helvetica,sans-serif}.ql-font-calibri{font-family:Calibri,Carlito,sans-serif}
+  .ql-font-times-new-roman{font-family:"Times New Roman",Times,serif}.ql-font-georgia{font-family:Georgia,serif}
+  .ql-font-verdana{font-family:Verdana,sans-serif}.ql-font-courier-new{font-family:"Courier New",monospace}
+  .ql-font-yu-gothic{font-family:"Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+</style>
+</head>
+<body class="text-slate-700">
+
+<!-- LOCK SCREEN -->
+<div id="lock" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gradient-to-br from-sky-100 via-white to-blue-100">
+  <div class="pop glass w-full max-w-sm rounded-3xl p-8 shadow-xl shadow-sky-200/60 text-center">
+    <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-300 to-blue-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-sky-200"><i class="fa-solid fa-book-open-reader"></i></div>
+    <div class="mt-5 text-2xl font-bold text-sky-900">Mode Baca</div>
+    <div class="mt-1 text-sm text-slate-500">Masukkan PIN untuk membuka catatanmu</div>
+    <div class="relative mt-6">
+      <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-sky-300"></i>
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" class="w-full pl-11 pr-4 py-3 rounded-xl border border-sky-200 bg-white text-center tracking-[.4em] text-lg focus:outline-none focus:ring-2 focus:ring-sky-300">
+    </div>
+    <div id="pinErr" class="hidden mt-3 text-sm text-rose-500"></div>
+    <div id="pinBtn" role="button" tabindex="0" class="mt-5 cursor-pointer select-none px-4 py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-sky-400 to-blue-500 shadow-md shadow-sky-200 hover:from-sky-500 hover:to-blue-600 active:scale-95 transition">Buka</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="overlay" class="fixed inset-0 z-30 bg-sky-950/30 hidden lg:hidden"></div>
+<div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full lg:translate-x-0 transition-transform duration-300 glass border-r border-sky-100 flex flex-col">
+  <div class="px-5 py-5 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-300 to-blue-500 text-white flex items-center justify-center"><i class="fa-solid fa-book-open"></i></div>
+    <div class="font-bold text-sky-900 text-lg leading-tight">Nihongo<br>Notes</div>
+  </div>
+  <div class="px-3 flex-1 space-y-1 text-sm font-medium">
+    <div data-tab="notes" role="button" class="cursor-pointer flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-sky-50 transition"><i class="fa-solid fa-pen-to-square w-5 text-sky-500"></i>Catatan</div>
+    <div data-tab="links" role="button" class="cursor-pointer flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-sky-50 transition"><i class="fa-solid fa-link w-5 text-sky-500"></i>Link Resources</div>
+    <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-sky-50 transition"><i class="fa-solid fa-pen-ruler w-5 text-sky-500"></i>Kelola (CRUD)</a>
+  </div>
+  <div class="p-3">
+    <div id="logoutBtn" role="button" class="cursor-pointer flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition"><i class="fa-solid fa-right-from-bracket w-5"></i>Kunci</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="lg:pl-64 min-h-full flex flex-col">
+  <div class="sticky top-0 z-20 glass border-x-0 border-t-0 px-4 sm:px-6 py-3 flex items-center gap-3" style="padding-top:max(.75rem,env(safe-area-inset-top))">
+    <div id="menuBtn" role="button" aria-label="Menu" class="lg:hidden cursor-pointer w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center active:scale-95 transition"><i class="fa-solid fa-bars"></i></div>
+    <div id="pageTitle" class="font-bold text-sky-900 text-lg truncate">Mode Baca</div>
+    <div class="ml-auto text-xs sm:text-sm text-sky-600 flex items-center gap-2"><i class="fa-regular fa-calendar"></i><span id="today"></span></div>
+  </div>
+  <div id="view" class="flex-1 p-4 sm:p-6" style="padding-bottom:max(1.5rem,env(safe-area-inset-bottom))"></div>
+</div>
+
+<div id="toasts" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-xs pointer-events-none"></div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TZ = 'Asia/Makassar';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = (s) => s ? new Intl.DateTimeFormat('id-ID', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(s + 'T00:00:00+08:00')) : '';
+const plain = (html) => new DOMParser().parseFromString(html || '', 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+DOMPurify.addHook('afterSanitizeAttributes', n => { if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); } });
+const clean = (h) => DOMPurify.sanitize(h || '');
+const host = (u) => { try { return new URL(u).hostname; } catch { return u; } };
+const state = { notes: [], links: [], q: '', tab: 'notes', sel: null };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    method: opts.method || 'GET',
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (res.status === 401 && !path.startsWith('/api/auth/login')) { showLock(); throw new Error('Sesi berakhir, masukkan PIN lagi.'); }
+  if (!res.ok) throw new Error((data && data.message) || 'Terjadi kesalahan.');
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const ok = type === 'success';
+  const el = document.createElement('div');
+  el.className = `toast-in pointer-events-auto flex items-center gap-3 bg-white border ${ok ? 'border-emerald-100' : 'border-rose-100'} rounded-2xl shadow-lg shadow-sky-100 px-4 py-3 text-sm`;
+  el.innerHTML = `<i class="fa-solid ${ok ? 'fa-circle-check text-emerald-500' : 'fa-circle-exclamation text-rose-500'} text-lg"></i><div class="flex-1 text-slate-700">${esc(msg)}</div>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.classList.replace('toast-in', 'toast-out'); setTimeout(() => el.remove(), 320); }, 3200);
+}
+
+/* AUTH */
+function showLock() { $('#lock').classList.remove('hidden'); $('#pin').value = ''; setTimeout(() => $('#pin').focus(), 50); }
+async function login() {
+  const err = $('#pinErr'); err.classList.add('hidden');
+  try { await api('/api/auth/login', { method: 'POST', body: { pin: $('#pin').value } }); $('#lock').classList.add('hidden'); await start(); }
+  catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
+}
+$('#pinBtn').addEventListener('click', login);
+$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('#logoutBtn').addEventListener('click', async () => { await api('/api/auth/logout', { method: 'POST' }).catch(() => {}); $('#view').innerHTML = ''; showLock(); });
+
+/* SIDEBAR */
+const sb = $('#sidebar'), ov = $('#overlay');
+const toggleSb = (open) => { sb.classList.toggle('-translate-x-full', !open); ov.classList.toggle('hidden', !open); };
+$('#menuBtn').addEventListener('click', () => toggleSb(sb.classList.contains('-translate-x-full')));
+ov.addEventListener('click', () => toggleSb(false));
+$$('[data-tab]').forEach(b => b.addEventListener('click', () => { state.tab = b.dataset.tab; state.sel = null; toggleSb(false); render(); }));
+
+/* RENDER */
+const view = $('#view');
+function render() {
+  $$('[data-tab]').forEach(b => { const on = b.dataset.tab === state.tab; b.classList.toggle('bg-sky-100', on); b.classList.toggle('text-sky-800', on); });
+  $('#pageTitle').textContent = state.tab === 'notes' ? 'Mode Baca: Catatan' : 'Mode Baca: Link';
+  state.tab === 'notes' ? renderNotes() : renderLinks();
+}
+
+function noteListHtml() {
+  const q = state.q.toLowerCase();
+  const list = state.notes.filter(n => !q || n.pattern.toLowerCase().includes(q) || plain(n.description).toLowerCase().includes(q));
+  if (!list.length) return `<div class="glass rounded-2xl p-8 text-center text-slate-500"><i class="fa-regular fa-note-sticky text-3xl text-sky-300"></i><div class="mt-3">${state.q ? 'Tidak ada catatan yang cocok.' : 'Belum ada catatan.'}</div></div>`;
+  return list.map(n => {
+    const on = String(state.sel) === String(n.id);
+    return `<div data-open="${n.id}" role="button" class="cursor-pointer rounded-2xl p-4 border transition active:scale-[.99] ${on ? 'bg-gradient-to-r from-sky-100 to-blue-50 border-sky-300 shadow-md shadow-sky-100' : 'glass hover:shadow-md hover:shadow-sky-100'}">
+      <div class="font-bold text-sky-900 truncate">${esc(n.pattern)}</div>
+      <div class="text-xs text-sky-500 mt-1"><i class="fa-regular fa-calendar mr-1"></i>${fmtDate(n.note_date)}</div>
+      <div class="text-sm text-slate-500 mt-2 line-clamp-2">${esc(plain(n.description).slice(0, 120))}</div>
+    </div>`;
+  }).join('');
+}
+
+function noteDetailHtml() {
+  const n = state.notes.find(x => String(x.id) === String(state.sel));
+  if (!n) return `<div class="hidden lg:flex glass rounded-3xl h-full min-h-[300px] items-center justify-center text-slate-400 text-center p-8"><div><i class="fa-solid fa-hand-pointer text-3xl text-sky-300"></i><div class="mt-3">Pilih catatan untuk membaca</div></div></div>`;
+  return `<div class="enter-right" id="detailBox">
+    <div class="lg:hidden mb-3"><div data-back role="button" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-sky-600 text-sm font-medium shadow-sm"><i class="fa-solid fa-arrow-left"></i>Kembali</div></div>
+    <div class="glass rounded-3xl p-5 sm:p-8 shadow-sm">
+      <div class="text-2xl sm:text-3xl font-bold text-sky-900 break-words">${esc(n.pattern)}</div>
+      <div class="text-sm text-sky-500 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${fmtDate(n.note_date)}</div>
+      <div class="h-px bg-gradient-to-r from-sky-200 to-transparent my-5"></div>
+      <div class="ql-snow rich"><div class="ql-editor break-words">${clean(n.description)}</div></div>
+    </div>
+  </div>`;
+}
+
+function renderNotes() {
+  const hasSel = !!state.sel;
+  view.innerHTML = `<div class="enter-up max-w-6xl mx-auto grid lg:grid-cols-[360px_1fr] gap-5 items-start">
+    <div class="${hasSel ? 'hidden lg:block' : ''} lg:sticky lg:top-24">
+      <div class="relative mb-4"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-sky-300"></i>
+        <input id="search" value="${esc(state.q)}" placeholder="Cari pola atau isi catatan" class="w-full pl-11 pr-4 py-3 rounded-xl border border-sky-100 bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky-300"></div>
+      <div id="noteList" class="space-y-3 lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto scroll-soft lg:pr-1">${noteListHtml()}</div>
+    </div>
+    <div id="noteDetail" class="${hasSel ? '' : 'hidden lg:block'}">${noteDetailHtml()}</div>
+  </div>`;
+  $('#search').addEventListener('input', e => { state.q = e.target.value; $('#noteList').innerHTML = noteListHtml(); });
+}
+
+function renderLinks() {
+  view.innerHTML = `<div class="enter-up max-w-3xl mx-auto">${state.links.length ? `<div class="space-y-3">${state.links.map(l => `
+    <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" class="glass rounded-2xl p-4 sm:p-5 flex items-center gap-3 shadow-sm hover:shadow-lg hover:shadow-sky-100 active:scale-[.99] transition">
+      <div class="w-11 h-11 shrink-0 rounded-xl bg-gradient-to-br from-sky-100 to-blue-100 text-sky-500 flex items-center justify-center"><i class="fa-solid fa-link"></i></div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sky-900 truncate">${esc(l.name)}</div>
+        <div class="text-xs text-slate-400 truncate">${esc(host(l.url))}</div>
+        <div class="text-xs text-sky-500 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${fmtDate(l.link_date)}</div>
+      </div>
+      <i class="fa-solid fa-arrow-up-right-from-square text-sky-400"></i>
+    </a>`).join('')}</div>` : `<div class="glass rounded-2xl p-10 text-center text-slate-500"><i class="fa-solid fa-link text-3xl text-sky-300"></i><div class="mt-3">Belum ada link.</div></div>`}</div>`;
+}
+
+view.addEventListener('click', e => {
+  if (e.target.closest('[data-back]')) { state.sel = null; renderNotes(); return; }
+  const el = e.target.closest('[data-open]');
+  if (el) { state.sel = el.dataset.open; renderNotes(); window.scrollTo({ top: 0 }); }
+});
+
+/* START */
+async function start() {
+  try {
+    const [n, l] = await Promise.all([api('/api/notes'), api('/api/links')]);
+    state.notes = n; state.links = l; render();
+  } catch (e) { if (!/Sesi/.test(e.message)) toast(e.message, 'error'); }
+}
+function tick() { $('#today').textContent = new Intl.DateTimeFormat('id-ID', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()) + ' WITA'; }
+tick(); setInterval(tick, 30000);
+(async () => { try { await api('/api/auth/me'); $('#lock').classList.add('hidden'); await start(); } catch { showLock(); } })();
+</script>
+</body>
+</html>
